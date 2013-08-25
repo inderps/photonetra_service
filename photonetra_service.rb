@@ -1,16 +1,17 @@
 require 'rubygems'
 require 'bundler'
+require 'sinatra'
 require 'json'
+require 'thin'
 
 Bundler.require
 
 if ENV['VCAP_SERVICES']
-  require 'json'
   services = JSON.parse(ENV['VCAP_SERVICES'])
   postgresql_key = services.keys.select { |svc| svc =~ /postgresql/i }.first
   postgresql = services[postgresql_key].first['credentials']
   postgresql_conn = "postgres://"+postgresql['user']+":"+postgresql['password']+ \
-    "@"+postgresql['host']+":"+postgresql['port']+"/"+postgresql['name']
+    "@"+postgresql['host']+":"+postgresql['port'].to_s() +"/"+postgresql['name']
   DataMapper.setup(:default, postgresql_conn)
 else
   DataMapper.setup(:default, "postgres://photonetra:photonetra@localhost:5432/photonetra")
