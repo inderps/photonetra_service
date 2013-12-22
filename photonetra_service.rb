@@ -83,8 +83,35 @@ end
 post '/contacts/:id/shoots' do
   content_type :json
   contact = Contact.get(params[:id])
-  shoot = contact.shoots.create(params[:shoot])
+  shoot = contact.shoots.create(shoot_type: params[:shoot_type], shoot_date: params[:shoot_date], shoot_time: params[:shoot_time],
+                                location: params[:location], delivery_date: params[:delivery_date], charges: params[:charges],
+                                notes: params[:notes])
   shoot.to_json
+end
+
+get '/contacts/:id/' do
+  content_type :json
+  contact = Contact.get(params[:id])
+  contact.to_json
+end
+
+get '/shoots/:id/' do
+  content_type :json
+  shoot = Shoot.get(params[:id])
+  {
+      id: shoot.id,
+      name: shoot.contact.name,
+      email: shoot.contact.email,
+      phone: shoot.contact.phone,
+      shoot_type: shoot.shoot_type,
+      shoot_date: Time.parse(shoot.shoot_date).strftime("%d-%b-%Y"),
+      shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
+      location: shoot.location,
+      delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
+      charges: shoot.charges,
+      notes: shoot.notes,
+      delivered: shoot.delivered
+  }.to_json
 end
 
 get '/photographers/:id/shoots/all' do
