@@ -114,41 +114,37 @@ get '/shoots/:id/' do
   }.to_json
 end
 
-get '/photographers/:id/shoots/all' do
-  content_type :json
-  photographer = Photographer.get(params[:id])
-  formatted_shoots = []
-  photographer.contacts.each do |contact|
-      contact.shoots.each do |shoot|
-          formatted_shoots << {
-              id: shoot.id,
-              shoot_date: shoot.shoot_date,
-              shoot_time: shoot.shoot_time,
-              contact_name: contact.name,
-              shoot_type: shoot.shoot_type
-          }
-      end
-  end
-  formatted_shoots.sort_by { |s| Date.parse(s[:shoot_date]) }.reverse.to_json
-end
-
-get '/photographers/:id/shoots/upcoming' do
+get '/photographers/:id/shoots' do
   content_type :json
   photographer = Photographer.get(params[:id])
   formatted_shoots = []
   photographer.contacts.each do |contact|
     contact.shoots.each do |shoot|
-      next if Date.parse(shoot.shoot_date) < Time.now.to_date
+      next if params[:filter] == "upcoming" && Date.parse(shoot.shoot_date) < Time.now.to_date
       formatted_shoots << {
           id: shoot.id,
-          shoot_date: shoot.shoot_date,
-          shoot_time: shoot.shoot_time,
+          shoot_date: Time.parse(shoot.shoot_date).strftime("%d-%b-%Y"),
+          shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
           contact_name: contact.name,
           shoot_type: shoot.shoot_type
       }
     end
   end
-  formatted_shoots.sort_by { |s| Date.parse(s[:shoot_date]) }.reverse.to_json
+  formatted_shoots.sort_by { |s| Time.parse(s[:shoot_date]) }.reverse.to_json
+end
+
+get '/photographers/:id/contacts' do
+  content_type :json
+  photographer = Photographer.get(params[:id])
+  formatted_contacts = []
+  photographer.contacts.each do |contact|
+    formatted_contacts << {
+        id: contact.id,
+        name: contact.name,
+        phone: contact.phone
+    }
+  end
+  formatted_contacts.sort_by { |c| c[:name] }.to_json
 end
 
 get '/' do
