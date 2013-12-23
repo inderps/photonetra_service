@@ -89,6 +89,16 @@ post '/contacts/:id/shoots' do
   shoot.to_json
 end
 
+post '/contacts/:id/' do
+  content_type :json
+  contact = Contact.get(params[:id])
+  contact.name = params[:name] if params[:name]
+  contact.phone = params[:phone] if params[:phone]
+  contact.email = params[:email] if params[:email]
+  contact.save
+  contact.to_json
+end
+
 get '/contacts/:id/' do
   content_type :json
   contact = Contact.get(params[:id])
@@ -152,6 +162,7 @@ get '/' do
   @contacts = Contact.all(:order => [:id.desc])
   @contacts.to_json
 end
+
 
 delete '/shoots/:id' do
   content_type :json
