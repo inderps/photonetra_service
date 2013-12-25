@@ -113,6 +113,15 @@ post '/contacts/:id/' do
   contact.to_json
 end
 
+post '/shoots/:id/mark_delivery' do
+  content_type :json
+  shoot = Shoot.get(params[:id])
+  shoot.delivered = true
+  shoot.delivered_flag_date = params[:delivered_flag_date]
+  shoot.save
+  shoot.to_json
+end
+
 get '/contacts/:id/' do
   content_type :json
   contact = Contact.get(params[:id])
@@ -129,6 +138,7 @@ get '/shoots/:id/' do
       phone: shoot.contact.phone,
       shoot_type: shoot.shoot_type,
       shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
+      shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
       shoot_time_from: shoot.shoot_time_from,
       shoot_time_to: shoot.shoot_time_to,
       location: shoot.location,
@@ -172,6 +182,25 @@ get '/photographers/:id/contacts' do
     }
   end
   formatted_contacts.sort_by { |c| c[:name] }.to_json
+end
+
+get '/photographers/:id/pending_deliveries' do
+  content_type :json
+  photographer = Photographer.get(params[:id])
+  formatted_shoots = []
+  photographer.contacts.each do |contact|
+    contact.shoots.each do |shoot|
+      next if Date.parse(shoot.delivery_date) < Time.now.to_date
+      formatted_shoots << {
+          id: shoot.id,
+          shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
+          delivery_date: Time.parse(shoot.delivery_date).strftime("%b #{Time.parse(shoot.delivery_date).day.ordinalize}, %Y"),
+          contact_name: contact.name,
+          shoot_type: shoot.shoot_type
+      }
+    end
+  end
+  formatted_shoots.sort_by {|s| Time.parse(s[:delivery_date])}.to_json
 end
 
 get '/' do
