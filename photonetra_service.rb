@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'bundler'
+require 'active_support/all'
 require 'sinatra'
 require 'sinatra/cross_origin'
 require 'json'
@@ -29,6 +30,7 @@ class Photographer
   property :phone, Text
   property :email, Text
   property :studio_name, Text
+  property :website, Text
   property :password, Text
   has n, :contacts
   property :created_at, DateTime
@@ -51,7 +53,8 @@ class Shoot
   property :id, Serial
   property :shoot_type, Text
   property :shoot_date, Text
-  property :shoot_time, Text
+  property :shoot_time_from, Text
+  property :shoot_time_to, Text
   property :location, Text
   property :delivery_date, Text
   property :charges, Decimal
@@ -59,6 +62,17 @@ class Shoot
   property :delivered, Boolean
   property :delivered_flag_date, Text
   belongs_to :contact
+  has n, :payments
+  property :created_at, DateTime
+end
+
+class Payment
+  include DataMapper::Resource
+  property :id, Serial
+  property :payment_date, Text
+  property :amount, Decimal
+  property :comment, Text
+  belongs_to :shoot
   property :created_at, DateTime
 end
 
@@ -83,8 +97,8 @@ end
 post '/contacts/:id/shoots' do
   content_type :json
   contact = Contact.get(params[:id])
-  shoot = contact.shoots.create(shoot_type: params[:shoot_type], shoot_date: params[:shoot_date], shoot_time: params[:shoot_time],
-                                location: params[:location], delivery_date: params[:delivery_date], charges: params[:charges],
+  shoot = contact.shoots.create(shoot_type: params[:shoot_type], shoot_date: params[:shoot_date], shoot_time_from: params[:shoot_time_from],
+                                shoot_time_to: params[:shoot_time_to], location: params[:location], delivery_date: params[:delivery_date], charges: params[:charges],
                                 notes: params[:notes])
   shoot.to_json
 end
@@ -114,8 +128,9 @@ get '/shoots/:id/' do
       email: shoot.contact.email,
       phone: shoot.contact.phone,
       shoot_type: shoot.shoot_type,
-      shoot_date: Time.parse(shoot.shoot_date).strftime("%d-%b-%Y"),
-      shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
+      shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
+      shoot_time_from: shoot.shoot_time_from,
+      shoot_time_to: shoot.shoot_time_to,
       location: shoot.location,
       delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
       charges: shoot.charges,
@@ -133,14 +148,16 @@ get '/photographers/:id/shoots' do
       next if params[:filter] == "upcoming" && Date.parse(shoot.shoot_date) < Time.now.to_date
       formatted_shoots << {
           id: shoot.id,
-          shoot_date: Time.parse(shoot.shoot_date).strftime("%d-%b-%Y"),
-          shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
+          shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
+          #shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
+          shoot_time_from: shoot.shoot_time_from,
+          shoot_time_to: shoot.shoot_time_to,
           contact_name: contact.name,
           shoot_type: shoot.shoot_type
       }
     end
   end
-  formatted_shoots.sort_by { |s| Time.parse(s[:shoot_date]) }.reverse.to_json
+  formatted_shoots.sort{|a,b| [Time.parse(b[:shoot_date]), Time.parse(a[:shoot_date]+ " " + a[:shoot_time_from])] <=> [Time.parse(a[:shoot_date]), Time.parse(b[:shoot_date]+ " " + b[:shoot_time_from])] }.to_json
 end
 
 get '/photographers/:id/contacts' do
