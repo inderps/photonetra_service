@@ -237,6 +237,27 @@ get '/photographers/:id/pending_deliveries' do
   formatted_shoots.sort_by {|s| Time.parse(s[:delivery_date])}.to_json
 end
 
+
+get '/photographers/:id/payments' do
+  content_type :json
+  photographer = Photographer.get(params[:id])
+  formatted_shoots = []
+  photographer.contacts.each do |contact|
+    contact.shoots.each do |shoot|
+      next if shoot.payments.any? && shoot.charges <= (shoot.payments.map{|p|p.amount}.inject(:+))
+      amount_due = shoot.payments.any? ? (shoot.charges - shoot.payments.map{|p|p.amount}.inject(:+)).to_f : shoot.charges
+      formatted_shoots << {
+          id: shoot.id,
+          shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
+          amount_due: amount_due,
+          contact_name: contact.name,
+          shoot_type: shoot.shoot_type,
+      }
+    end
+  end
+  formatted_shoots.sort_by {|s| s[:id]}.reverse.to_json
+end
+
 get '/' do
   content_type :json
   @contacts = Contact.all(:order => [:id.desc])
