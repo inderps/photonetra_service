@@ -80,6 +80,7 @@ DataMapper.finalize
 Photographer.auto_upgrade!
 Contact.auto_upgrade!
 Shoot.auto_upgrade!
+Payment.auto_upgrade!
 
 post '/photographers' do
   content_type :json
@@ -113,13 +114,37 @@ post '/contacts/:id/' do
   contact.to_json
 end
 
+post '/shoots/:id/payments' do
+  content_type :json
+  shoot = Shoot.get(params[:id])
+  shoot.payments.create(payment_date: params[:payment_date], amount: params[:amount], comment: params[:comment])
+  {
+    shoot_id: shoot.id
+  }.to_json
+end
+
 post '/shoots/:id/mark_delivery' do
   content_type :json
   shoot = Shoot.get(params[:id])
-  shoot.delivered = true
-  shoot.delivered_flag_date = params[:delivered_flag_date]
-  shoot.save
-  shoot.to_json
+  #shoot.delivered = true
+  #shoot.delivered_flag_date = params[:delivered_flag_date]
+  #shoot.save
+  {
+      id: shoot.id,
+      name: shoot.contact.name,
+      email: shoot.contact.email,
+      phone: shoot.contact.phone,
+      shoot_type: shoot.shoot_type,
+      shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
+      shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
+      shoot_time_from: shoot.shoot_time_from,
+      shoot_time_to: shoot.shoot_time_to,
+      location: shoot.location,
+      delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
+      charges: shoot.charges,
+      notes: shoot.notes,
+      delivered: shoot.delivered
+  }.to_json
 end
 
 get '/contacts/:id/' do
