@@ -32,6 +32,7 @@ class Photographer
   property :studio_name, Text
   property :website, Text
   property :password, Text
+  has n, :shoots
   has n, :contacts
   property :created_at, DateTime
 end
@@ -44,13 +45,14 @@ class Contact
   property :email, Text
   property :address, Text
   belongs_to :photographer
-  has n, :shoots
+  belongs_to :shoot, :required => false
   property :created_at, DateTime
 end
 
 class Shoot
   include DataMapper::Resource
   property :id, Serial
+  property :event_name, Text
   property :shoot_type, Text
   property :shoot_date, Text
   property :shoot_time_from, Text
@@ -61,8 +63,9 @@ class Shoot
   property :notes, Text
   property :delivered, Boolean
   property :delivered_flag_date, Text
-  belongs_to :contact
+  belongs_to :photographer
   has n, :payments
+  has 1, :contact
   property :created_at, DateTime
 end
 
@@ -95,57 +98,66 @@ post '/photographers/:id/contacts' do
   contact.to_json
 end
 
-post '/contacts/:id/shoots' do
+post '/photographers/:id/shoots' do
   content_type :json
-  contact = Contact.get(params[:id])
-  shoot = contact.shoots.create(shoot_type: params[:shoot_type], shoot_date: params[:shoot_date], shoot_time_from: params[:shoot_time_from],
+  photographer = Photographer.get(params[:id])
+  shoot = photographer.shoots.create(event_name: params[:event_name], shoot_type: params[:shoot_type], shoot_date: params[:shoot_date], shoot_time_from: params[:shoot_time_from],
                                 shoot_time_to: params[:shoot_time_to], location: params[:location], delivery_date: params[:delivery_date], charges: params[:charges],
                                 notes: params[:notes])
   shoot.to_json
 end
 
-post '/contacts/:id/' do
-  content_type :json
-  contact = Contact.get(params[:id])
-  contact.name = params[:name] if params[:name]
-  contact.phone = params[:phone] if params[:phone]
-  contact.email = params[:email] if params[:email]
-  contact.save
-  contact.to_json
-end
-
-post '/shoots/:id/payments' do
+post '/shoots/:id/assign_contact' do
   content_type :json
   shoot = Shoot.get(params[:id])
-  shoot.payments.create(payment_date: params[:payment_date], amount: params[:amount], comment: params[:comment])
-  {
-    shoot_id: shoot.id
-  }.to_json
+  contact = Contact.get(params[:contact_id])
+  shoot.contact = contact
+  shoot.save
+  shoot.to_json
 end
 
-post '/shoots/:id/mark_delivery' do
-  content_type :json
-  shoot = Shoot.get(params[:id])
-  #shoot.delivered = true
-  #shoot.delivered_flag_date = params[:delivered_flag_date]
-  #shoot.save
-  {
-      id: shoot.id,
-      name: shoot.contact.name,
-      email: shoot.contact.email,
-      phone: shoot.contact.phone,
-      shoot_type: shoot.shoot_type,
-      shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
-      shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
-      shoot_time_from: shoot.shoot_time_from,
-      shoot_time_to: shoot.shoot_time_to,
-      location: shoot.location,
-      delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
-      charges: shoot.charges,
-      notes: shoot.notes,
-      delivered: shoot.delivered
-  }.to_json
-end
+#post '/contacts/:id/' do
+#  content_type :json
+#  contact = Contact.get(params[:id])
+#  contact.name = params[:name] if params[:name]
+#  contact.phone = params[:phone] if params[:phone]
+#  contact.email = params[:email] if params[:email]
+#  contact.save
+#  contact.to_json
+#end
+
+#post '/shoots/:id/payments' do
+#  content_type :json
+#  shoot = Shoot.get(params[:id])
+#  shoot.payments.create(payment_date: params[:payment_date], amount: params[:amount], comment: params[:comment])
+#  {
+#    shoot_id: shoot.id
+#  }.to_json
+#end
+#
+#post '/shoots/:id/mark_delivery' do
+#  content_type :json
+#  shoot = Shoot.get(params[:id])
+#  #shoot.delivered = true
+#  #shoot.delivered_flag_date = params[:delivered_flag_date]
+#  #shoot.save
+#  {
+#      id: shoot.id,
+#      name: shoot.contact.name,
+#      email: shoot.contact.email,
+#      phone: shoot.contact.phone,
+#      shoot_type: shoot.shoot_type,
+#      shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
+#      shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
+#      shoot_time_from: shoot.shoot_time_from,
+#      shoot_time_to: shoot.shoot_time_to,
+#      location: shoot.location,
+#      delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
+#      charges: shoot.charges,
+#      notes: shoot.notes,
+#      delivered: shoot.delivered
+#  }.to_json
+#end
 
 get '/contacts/:id/' do
   content_type :json
@@ -164,11 +176,21 @@ get '/shoots/:id/' do
         comment: p.comment
     }
   end
+
+  contact = nil
+
+  if shoot.contact.present?
+    contact = {
+        id: shoot.contact.id,
+        name: shoot.contact.name,
+        email: shoot.contact.email,
+        phone: shoot.contact.phone,
+    }
+  end
+
   {
       id: shoot.id,
-      name: shoot.contact.name,
-      email: shoot.contact.email,
-      phone: shoot.contact.phone,
+      event_name: shoot.event_name,
       shoot_type: shoot.shoot_type,
       shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
       shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
@@ -179,7 +201,8 @@ get '/shoots/:id/' do
       charges: shoot.charges,
       notes: shoot.notes,
       delivered: shoot.delivered,
-      payments: payments.sort_by { |p| Time.parse(p[:payment_date]) }.reverse
+      payments: payments.sort_by { |p| Time.parse(p[:payment_date]) }.reverse,
+      contact: contact
   }.to_json
 end
 
@@ -187,19 +210,17 @@ get '/photographers/:id/shoots' do
   content_type :json
   photographer = Photographer.get(params[:id])
   formatted_shoots = []
-  photographer.contacts.each do |contact|
-    contact.shoots.each do |shoot|
-      next if params[:filter] == "upcoming" && Date.parse(shoot.shoot_date) < Time.now.to_date
-      formatted_shoots << {
-          id: shoot.id,
-          shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
-          #shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
-          shoot_time_from: shoot.shoot_time_from,
-          shoot_time_to: shoot.shoot_time_to,
-          contact_name: contact.name,
-          shoot_type: shoot.shoot_type
-      }
-    end
+  photographer.shoots.each do |shoot|
+    next if params[:filter] == "upcoming" && Date.parse(shoot.shoot_date) < Time.now.to_date
+    formatted_shoots << {
+        id: shoot.id,
+        event_name: shoot.event_name,
+        shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
+        #shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
+        shoot_time_from: shoot.shoot_time_from,
+        shoot_time_to: shoot.shoot_time_to,
+        shoot_type: shoot.shoot_type
+    }
   end
   formatted_shoots.sort{|a,b| [Time.parse(b[:shoot_date]), Time.parse(a[:shoot_date]+ " " + a[:shoot_time_from])] <=> [Time.parse(a[:shoot_date]), Time.parse(b[:shoot_date]+ " " + b[:shoot_time_from])] }.to_json
 end
@@ -222,52 +243,47 @@ get '/photographers/:id/pending_deliveries' do
   content_type :json
   photographer = Photographer.get(params[:id])
   formatted_shoots = []
-  photographer.contacts.each do |contact|
-    contact.shoots.each do |shoot|
-      next if Date.parse(shoot.delivery_date) < Time.now.to_date
-      formatted_shoots << {
-          id: shoot.id,
-          shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
-          delivery_date: Time.parse(shoot.delivery_date).strftime("%b #{Time.parse(shoot.delivery_date).day.ordinalize}, %Y"),
-          contact_name: contact.name,
-          shoot_type: shoot.shoot_type
-      }
-    end
+  photographer.shoots.each do |shoot|
+    next if Date.parse(shoot.delivery_date) < Time.now.to_date
+    formatted_shoots << {
+        id: shoot.id,
+        event_name: shoot.event_name,
+        shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
+        delivery_date: Time.parse(shoot.delivery_date).strftime("%b #{Time.parse(shoot.delivery_date).day.ordinalize}, %Y"),
+        shoot_type: shoot.shoot_type
+    }
   end
   formatted_shoots.sort_by {|s| Time.parse(s[:delivery_date])}.to_json
 end
-
 
 get '/photographers/:id/payments' do
   content_type :json
   photographer = Photographer.get(params[:id])
   formatted_shoots = []
-  photographer.contacts.each do |contact|
-    contact.shoots.each do |shoot|
-      next if shoot.payments.any? && shoot.charges <= (shoot.payments.map{|p|p.amount}.inject(:+))
-      amount_due = shoot.payments.any? ? (shoot.charges - shoot.payments.map{|p|p.amount}.inject(:+)).to_f : shoot.charges
-      formatted_shoots << {
-          id: shoot.id,
-          shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
-          amount_due: amount_due,
-          contact_name: contact.name,
-          shoot_type: shoot.shoot_type,
-      }
-    end
+  photographer.shoots.each do |shoot|
+    next if shoot.payments.any? && shoot.charges <= (shoot.payments.map{|p|p.amount}.inject(:+))
+    amount_due = shoot.payments.any? ? (shoot.charges - shoot.payments.map{|p|p.amount}.inject(:+)).to_f : shoot.charges
+    formatted_shoots << {
+        id: shoot.id,
+        shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
+        amount_due: amount_due,
+        event_name: shoot.event_name,
+        shoot_type: shoot.shoot_type,
+    }
   end
   formatted_shoots.sort_by {|s| s[:id]}.reverse.to_json
 end
 
-get '/' do
-  content_type :json
-  @contacts = Contact.all(:order => [:id.desc])
-  @contacts.to_json
-end
-
-
-delete '/shoots/:id' do
-  content_type :json
-  shoot = Shoot.get(params[:id])
-  shoot.destroy
-  {}.to_json
-end
+#get '/' do
+#  content_type :json
+#  @contacts = Contact.all(:order => [:id.desc])
+#  @contacts.to_json
+#end
+#
+#
+#delete '/shoots/:id' do
+#  content_type :json
+#  shoot = Shoot.get(params[:id])
+#  shoot.destroy
+#  {}.to_json
+#end
