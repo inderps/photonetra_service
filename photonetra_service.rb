@@ -156,6 +156,14 @@ end
 get '/shoots/:id/' do
   content_type :json
   shoot = Shoot.get(params[:id])
+  payments = []
+  shoot.payments.each do |p|
+    payments << {
+        payment_date: Time.parse(p.payment_date).strftime("%b #{Time.parse(p.payment_date).day.ordinalize}"),
+        amount: p.amount,
+        comment: p.comment
+    }
+  end
   {
       id: shoot.id,
       name: shoot.contact.name,
@@ -170,7 +178,8 @@ get '/shoots/:id/' do
       delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
       charges: shoot.charges,
       notes: shoot.notes,
-      delivered: shoot.delivered
+      delivered: shoot.delivered,
+      payments: payments.sort_by { |p| Time.parse(p[:payment_date]) }.reverse
   }.to_json
 end
 
