@@ -23,6 +23,10 @@ else
   DataMapper.setup(:default, "postgres://photonetra:photonetra@localhost:5432/photonetra")
 end
 
+SHOOT_TYPES = {
+    "wedding"=> "Wedding Ceremony"
+}
+
 class Photographer
   include DataMapper::Resource
   property :id, Serial
@@ -45,7 +49,6 @@ class Contact
   property :email, Text
   property :address, Text
   belongs_to :photographer
-  belongs_to :shoot, :required => false
   property :created_at, DateTime
 end
 
@@ -61,11 +64,11 @@ class Shoot
   property :delivery_date, Text
   property :charges, Decimal
   property :notes, Text
+  property :contact_id, Numeric
   property :delivered, Boolean
   property :delivered_flag_date, Text
   belongs_to :photographer
   has n, :payments
-  has 1, :contact
   property :created_at, DateTime
 end
 
@@ -111,7 +114,7 @@ post '/shoots/:id/assign_contact' do
   content_type :json
   shoot = Shoot.get(params[:id])
   contact = Contact.get(params[:contact_id])
-  shoot.contact = contact
+  shoot.contact_id = contact.id
   shoot.save
   shoot.to_json
 end
@@ -162,7 +165,14 @@ end
 get '/contacts/:id/' do
   content_type :json
   contact = Contact.get(params[:id])
-  contact.to_json
+  shoots = Shoot.all.select{|s| s.contact_id.present? && s.contact_id == contact.id.to_s}
+  {
+      id: contact.id,
+      name: contact.name,
+      email: contact.email,
+      phone: contact.phone,
+      shoots: shoots.map{|s| {id: s.id, shoot_date: s.shoot_date, event_name: s.event_name}}
+  }.to_json
 end
 
 get '/shoots/:id/' do
@@ -179,19 +189,20 @@ get '/shoots/:id/' do
 
   contact = nil
 
-  if shoot.contact.present?
+  if shoot.contact_id.present?
+    contact = Contact.get(shoot.contact_id)
     contact = {
-        id: shoot.contact.id,
-        name: shoot.contact.name,
-        email: shoot.contact.email,
-        phone: shoot.contact.phone,
+        id: contact.id,
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
     }
   end
 
   {
       id: shoot.id,
       event_name: shoot.event_name,
-      shoot_type: shoot.shoot_type,
+      shoot_type: SHOOT_TYPES[shoot.shoot_type],
       shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
       shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
       shoot_time_from: shoot.shoot_time_from,
@@ -219,7 +230,7 @@ get '/photographers/:id/shoots' do
         #shoot_time: Time.parse(shoot.shoot_time).strftime("%I:%M %p"),
         shoot_time_from: shoot.shoot_time_from,
         shoot_time_to: shoot.shoot_time_to,
-        shoot_type: shoot.shoot_type
+        shoot_type: SHOOT_TYPES[shoot.shoot_type]
     }
   end
   formatted_shoots.sort{|a,b| [Time.parse(b[:shoot_date]), Time.parse(a[:shoot_date]+ " " + a[:shoot_time_from])] <=> [Time.parse(a[:shoot_date]), Time.parse(b[:shoot_date]+ " " + b[:shoot_time_from])] }.to_json
@@ -250,7 +261,7 @@ get '/photographers/:id/pending_deliveries' do
         event_name: shoot.event_name,
         shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
         delivery_date: Time.parse(shoot.delivery_date).strftime("%b #{Time.parse(shoot.delivery_date).day.ordinalize}, %Y"),
-        shoot_type: shoot.shoot_type
+        shoot_type: SHOOT_TYPES[shoot.shoot_type]
     }
   end
   formatted_shoots.sort_by {|s| Time.parse(s[:delivery_date])}.to_json
@@ -268,7 +279,7 @@ get '/photographers/:id/payments' do
         shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}, %Y"),
         amount_due: amount_due,
         event_name: shoot.event_name,
-        shoot_type: shoot.shoot_type,
+        shoot_type: SHOOT_TYPES[shoot.shoot_type],
     }
   end
   formatted_shoots.sort_by {|s| s[:id]}.reverse.to_json
