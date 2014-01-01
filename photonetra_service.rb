@@ -126,14 +126,14 @@ end
 #  contact.to_json
 #end
 
-#post '/shoots/:id/payments' do
-#  content_type :json
-#  shoot = Shoot.get(params[:id])
-#  shoot.payments.create(payment_date: params[:payment_date], amount: params[:amount], comment: params[:comment])
-#  {
-#    shoot_id: shoot.id
-#  }.to_json
-#end
+post '/shoots/:id/payments' do
+  content_type :json
+  shoot = Shoot.get(params[:id])
+  shoot.payments.create(payment_date: params[:payment_date], amount: params[:amount], comment: params[:comment])
+  {
+    shoot_id: shoot.id
+  }.to_json
+end
 #
 #post '/shoots/:id/mark_delivery' do
 #  content_type :json
