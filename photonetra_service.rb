@@ -13,16 +13,7 @@ configure do
   enable :cross_origin
 end
 
-if ENV['VCAP_SERVICES']
-  services = JSON.parse(ENV['VCAP_SERVICES'])
-  postgresql_key = services.keys.select { |svc| svc =~ /postgresql/i }.first
-  postgresql = services[postgresql_key].first['credentials']
-  postgresql_conn = "postgres://"+postgresql['user']+":"+postgresql['password']+ \
-    "@"+postgresql['host']+":"+postgresql['port'].to_s() +"/"+postgresql['name']
-  DataMapper.setup(:default, postgresql_conn)
-else
-  DataMapper.setup(:default, "postgres://photonetra:photonetra@localhost:5432/photonetra")
-end
+DataMapper.setup(:default, ENV['DATABASE_URL'] || "postgres://photonetra:photonetra@localhost:5432/photonetra")
 
 SHOOT_TYPES = {
     "wedding"=> "Wedding Ceremony"
