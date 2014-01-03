@@ -125,7 +125,6 @@ end
 post '/login' do
   content_type :json
   photographer = Photographer.first(email: params[:email], password: params[:password])
-
   if(photographer)
     photographer.token = SecureRandom.hex
     photographer.save
@@ -140,6 +139,13 @@ post '/login' do
   end
 end
 
+post '/photographers/:id/logout' do
+  content_type :json
+  photographer = Photographer.get(params[:id])
+  photographer.token = nil
+  photographer.save
+  {}.to_json
+end
 
 post '/photographers' do
   content_type :json
