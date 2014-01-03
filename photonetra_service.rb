@@ -13,7 +13,7 @@ configure do
   enable :cross_origin
 end
 
-DataMapper.setup(:default, ENV['DATABASE_URL'] || "postgres://photonetra:photonetra@localhost:5432/photonetra")
+DataMapper.setup(:default, ENV['HEROKU_POSTGRESQL_ORANGE_URL'] || "postgres://photonetra:photonetra@localhost:5432/photonetra")
 
 SHOOT_TYPES = {
     "wedding"=> "Wedding Ceremony"
