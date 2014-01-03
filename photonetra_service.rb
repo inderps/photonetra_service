@@ -232,7 +232,6 @@ get '/photographers/:id/shoots' do
   photographer = Photographer.get(params[:id])
   formatted_shoots = []
   photographer.shoots.each do |shoot|
-    next if params[:filter] == "upcoming" && Date.parse(shoot.shoot_date) < Time.now.to_date
     formatted_shoots << {
         id: shoot.id,
         event_name: shoot.event_name,
