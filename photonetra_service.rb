@@ -76,6 +76,7 @@ class Payment
 end
 
 DataMapper.finalize
+
 Photographer.auto_upgrade!
 Contact.auto_upgrade!
 Shoot.auto_upgrade!
