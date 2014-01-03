@@ -5,6 +5,7 @@ require 'sinatra'
 require 'sinatra/cross_origin'
 require 'json'
 require 'thin'
+require 'securerandom'
 
 Bundler.require
 
@@ -33,6 +34,7 @@ class Photographer
   property :name, Text
   property :phone, Text
   property :email, Text
+  property :token, Text
   property :studio_name, Text
   property :website, Text
   property :password, Text
@@ -127,6 +129,25 @@ def shoot_as_json shoot
       contact: contact
   }.to_json
 end
+
+post '/login' do
+  content_type :json
+  photographer = Photographer.first(email: params[:email], password: params[:password])
+
+  if(photographer)
+    photographer.token = SecureRandom.hex
+    photographer.save
+    {
+        token: photographer.token,
+        id: photographer.id
+    }.to_json
+  else
+    {
+        error: "invalid"
+    }.to_json
+  end
+end
+
 
 post '/photographers' do
   content_type :json
