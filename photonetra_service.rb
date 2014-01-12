@@ -107,6 +107,7 @@ def shoot_as_json shoot
   {
       id: shoot.id,
       event_name: shoot.event_name,
+      shoot_actuaL_type: shoot.shoot_type,
       shoot_type: SHOOT_TYPES[shoot.shoot_type],
       shoot_date: Time.parse(shoot.shoot_date).strftime("%b #{Time.parse(shoot.shoot_date).day.ordinalize}"),
       shoot_unformatted_date: Time.parse(shoot.shoot_date).strftime("%Y-%m-%d"),
@@ -114,6 +115,7 @@ def shoot_as_json shoot
       shoot_time_to: shoot.shoot_time_to,
       location: shoot.location,
       delivery_date: Time.parse(shoot.delivery_date).strftime("%d-%b-%Y"),
+      unformatted_delivery_date: Time.parse(shoot.delivery_date).strftime("%Y-%m-%d"),
       charges: shoot.charges,
       notes: shoot.notes,
       delivered: shoot.delivered,
