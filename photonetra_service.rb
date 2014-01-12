@@ -178,15 +178,15 @@ post '/shoots/:id/assign_contact' do
   shoot.to_json
 end
 
-#post '/contacts/:id/' do
-#  content_type :json
-#  contact = Contact.get(params[:id])
-#  contact.name = params[:name] if params[:name]
-#  contact.phone = params[:phone] if params[:phone]
-#  contact.email = params[:email] if params[:email]
-#  contact.save
-#  contact.to_json
-#end
+post '/contacts/:id' do
+  content_type :json
+  contact = Contact.get(params[:id])
+  contact.name = params[:name] if params[:name]
+  contact.phone = params[:phone] if params[:phone]
+  contact.email = params[:email] if params[:email]
+  contact.save
+  contact.to_json
+end
 
 post '/shoots/:id/payments' do
   content_type :json
