@@ -301,6 +301,27 @@ get '/photographers/:id/payments' do
   formatted_shoots.sort_by {|s| s[:id]}.reverse.to_json
 end
 
+get '/photographers' do
+  content_type :json
+  Photographer.all.to_json
+end
+
+get '/delete_all' do
+  content_type :json
+  Payment.all.each do |p|
+    p.destroy
+  end
+  Contact.all.each do |c|
+    c.destroy
+  end
+  Shoot.all.each do |s|
+    s.destroy
+  end
+  Photographer.all.each do |p|
+    p.destroy
+  end
+end
+
 #get '/' do
 #  content_type :json
 #  @contacts = Contact.all(:order => [:id.desc])
