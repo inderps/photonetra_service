@@ -16,7 +16,13 @@ end
 DataMapper.setup(:default, ENV['HEROKU_POSTGRESQL_ORANGE_URL'] || "postgres://photonetra:photonetra@localhost:5432/photonetra")
 
 SHOOT_TYPES = {
-    "wedding"=> "Wedding Ceremony"
+    "wedding"=> "Wedding Photography",
+    "family"=> "Family Photography",
+    "fashion"=> "Fashion Photography",
+    "potrait"=> "Potrait Photography",
+    "event"=> "Event Photography",
+    "widlife"=> "Wildlife Photography",
+    "landscape"=> "Landscape Photography",
 }
 
 class Photographer
